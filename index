@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Калькулятор</title>
+<style>
+:root{--bg:#14161a;--panel:#1d2026;--key:#2a2e36;--key-h:#363b45;--text:#f2f4f7;--dim:#8b92a0;--op:#f5a524;--op-t:#1a1200;--clr:#ff6b6b;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:16px}
+.calc{width:100%;max-width:400px;background:var(--panel);border-radius:24px;padding:20px}
+.screen{min-height:130px;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-end;padding:8px 8px 16px;overflow:hidden}
+.expr{font-size:1.5rem;color:var(--dim);min-height:2rem;word-break:break-all;text-align:right}
+.result{font-size:4rem;font-weight:600;line-height:1.1;word-break:break-all;text-align:right;white-space:nowrap}
+.keys{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+button{font:inherit;font-size:2rem;font-weight:500;height:72px;border:0;border-radius:18px;background:var(--key);color:var(--text);cursor:pointer;transition:background .12s,transform .06s}
+button:hover{background:var(--key-h)}
+button:active{transform:scale(.95)}
+button:focus-visible{outline:3px solid var(--op);outline-offset:2px}
+.op{background:var(--op);color:var(--op-t)}
+.op:hover{background:#ffb94a}
+.clr{color:var(--clr)}
+.wide{grid-column:span 2}
+</style>
+</head>
+<body>
+<main class="calc" aria-label="Калькулятор">
+  <div class="screen" aria-live="polite">
+    <div class="expr" id="expr"></div>
+    <div class="result" id="result">0</div>
+  </div>
+  <div class="keys" id="keys">
+    <button class="clr" data-a="clear">C</button>
+    <button data-a="back" aria-label="Стерти">⌫</button>
+    <button data-a="percent">%</button>
+    <button class="op" data-a="op" data-v="÷">÷</button>
+    <button data-a="num" data-v="7">7</button>
+    <button data-a="num" data-v="8">8</button>
+    <button data-a="num" data-v="9">9</button>
+    <button class="op" data-a="op" data-v="×">×</button>
+    <button data-a="num" data-v="4">4</button>
+    <button data-a="num" data-v="5">5</button>
+    <button data-a="num" data-v="6">6</button>
+    <button class="op" data-a="op" data-v="−">−</button>
+    <button data-a="num" data-v="1">1</button>
+    <button data-a="num" data-v="2">2</button>
+    <button data-a="num" data-v="3">3</button>
+    <button class="op" data-a="op" data-v="+">+</button>
+    <button class="wide" data-a="num" data-v="0">0</button>
+    <button data-a="dot">,</button>
+    <button class="op" data-a="eq">=</button>
+  </div>
+</main>
+<script>
+(function(){
+  var cur="0", prev=null, op=null, fresh=false;
+  var rEl=document.getElementById("result"), eEl=document.getElementById("expr");
+
+  function fmt(s){
+    if(s==="Помилка") return s;
+    var neg=s[0]==="-", t=neg?s.slice(1):s, p=t.split(".");
+    p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g," ");
+    return (neg?"-":"")+p.join(",");
+  }
+  function show(){
+    rEl.textContent=fmt(cur);
+    var n=cur.length;
+    rEl.style.fontSize=n>14?"2rem":n>10?"2.75rem":n>7?"3.5rem":"4rem";
+    eEl.textContent=(prev!==null&&op)?fmt(prev)+" "+op:"";
+  }
+  function calc(a,b,o){
+    a=parseFloat(a); b=parseFloat(b);
+    var r;
+    if(o==="+")r=a+b; else if(o==="−")r=a-b; else if(o==="×")r=a*b;
+    else { if(b===0) return "Помилка"; r=a/b; }
+    return String(parseFloat(r.toPrecision(12)));
+  }
+  function num(d){
+    if(cur==="Помилка"||fresh){cur="0";fresh=false;}
+    cur = cur==="0" ? d : (cur.replace(/[-.]/g,"").length>=15 ? cur : cur+d);
+  }
+  function setOp(o){
+    if(cur==="Помилка") return;
+    if(prev!==null&&op&&!fresh){ cur=calc(prev,cur,op); if(cur==="Помилка"){prev=null;op=null;return;} }
+    prev=cur; op=o; fresh=true;
+  }
+  function act(a,v){
+    if(a==="num") num(v);
+    else if(a==="dot"){ if(cur==="Помилка"||fresh){cur="0";fresh=false;} if(cur.indexOf(".")<0) cur+="."; }
+    else if(a==="op") setOp(v);
+    else if(a==="eq"){
+      if(prev!==null&&op&&cur!=="Помилка"){ cur=calc(prev,cur,op); prev=null; op=null; fresh=true; }
+    }
+    else if(a==="clear"){ cur="0"; prev=null; op=null; fresh=false; }
+    else if(a==="back"){ if(cur==="Помилка"||fresh){cur="0";fresh=false;} else cur=cur.length>1&&!(cur.length===2&&cur[0]==="-")?cur.slice(0,-1):"0"; }
+    else if(a==="percent"){ if(cur!=="Помилка") cur=String(parseFloat((parseFloat(cur)/100).toPrecision(12))); }
+    show();
+  }
+  document.getElementById("keys").addEventListener("click",function(e){
+    var b=e.target.closest("button"); if(b) act(b.dataset.a,b.dataset.v);
+  });
+  document.addEventListener("keydown",function(e){
+    var k=e.key;
+    if(/^\d$/.test(k)) act("num",k);
+    else if(k==="."||k===",") act("dot");
+    else if(k==="+") act("op","+");
+    else if(k==="-") act("op","−");
+    else if(k==="*") act("op","×");
+    else if(k==="/"){ e.preventDefault(); act("op","÷"); }
+    else if(k==="Enter"||k==="="){ e.preventDefault(); act("eq"); }
+    else if(k==="Backspace") act("back");
+    else if(k==="Escape") act("clear");
+    else if(k==="%") act("percent");
+  });
+  show();
+})();
+</script>
+</body>
+</html>
